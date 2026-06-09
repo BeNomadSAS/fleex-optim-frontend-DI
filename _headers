@@ -1,0 +1,58 @@
+# Cloudflare _headers — security + cache policy.
+#
+# Mechanism notes:
+# - Vite copies public/_headers -> dist/_headers (publicDir: 'public').
+# - Cloudflare Workers Static Assets (wrangler >= 4.x) reads dist/_headers at
+#   deploy and uploads it alongside the assets (see wrangler-dist/cli.js
+#   ~line 315858 + 168166). The wrangler.jsonc schema does NOT accept an
+#   `assets.headers` field (Assets has additionalProperties:false), so this
+#   file is the single source of truth for both cache + security headers.
+# - Cloudflare Pages and Netlify also honour this syntax verbatim.
+# - Order: most-specific path block wins; no header merging across blocks,
+#   so each specific block must re-state any default it wants to keep.
+#
+# Security rationale:
+# - Referrer-Policy: strict-origin-when-cross-origin — bemap-js-api builds
+#   WMS tile URLs as `{host}/bgis/wms?appid=X&appcode=Y&...` (see
+#   public/bemap-js-api/bemap-js-api.js:3029,6021). Without this header,
+#   the full Referer (containing appid+appcode if the visited page ever had
+#   them in its URL, or just leaking the visited path) would ship on every
+#   cross-origin tile GET. strict-origin-when-cross-origin trims the
+#   Referer to the origin only on cross-origin requests, stopping the leak.
+# - CSP script-src 'self' 'unsafe-inline' is required for the Vite-emitted
+#   inline boot/preload snippets in dist/index.html (no nonce mechanism in
+#   the plain Vite SPA build).
+# - connect-src allowlist matches src/app/config.js solverHostAllowlist
+#   (`.benomad.com`, `.benomad.net`, `.a.run.app`) plus the Google Fonts
+#   CSS endpoint. Keep in sync — tests/unit/security-headers.test.js
+#   cross-checks both files.
+
+/*
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.benomad.com https://*.benomad.net https://*.a.run.app https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Cache-Control: no-cache, must-revalidate
+
+/assets/*
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Cache-Control: public, max-age=31536000, immutable
+
+/bemap-js-api/*
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Cache-Control: public, max-age=31536000, immutable
+
+/index.html
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.benomad.com https://*.benomad.net https://*.a.run.app https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Cache-Control: no-cache, must-revalidate

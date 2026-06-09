@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="app.title">Fleex Optim Route Planner</title>
+
+    <!-- Favicon: BeNomad logo (shipped with bemap-js-api, vendored under /public/bemap-js-api/) -->
+    <link rel="icon" type="image/png" href="/bemap-js-api/favicon.png" />
+    <link rel="shortcut icon" href="/bemap-js-api/favicon.ico" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap"
+        rel="stylesheet" />
+
+    <!-- bemap-js-api SDK (vendored under /public/bemap-js-api/) -->
+    <link rel="stylesheet" href="/bemap-js-api/leaflet.css" />
+    <link rel="stylesheet" href="/bemap-js-api/maplibre-gl.css">
+    <link rel="stylesheet" href="/bemap-js-api/bemap-js-api.css" />
+    <script src="/bemap-js-api/leaflet.js"></script>
+    <script src="/bemap-js-api/maplibre-gl.js"></script>
+    <script src="/bemap-js-api/pmtiles.js"></script>
+    <script src="/bemap-js-api/bemap-js-api.min.js"></script>
+
+    <!-- App entry -->
+  <script type="module" crossorigin src="/assets/index-spwG4azx.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-g_khcQh3.css">
+</head>
+
+<body>
+    <div class="app" id="app">
+
+        <!-- Full-bleed map (initialised in Phase D) -->
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <!-- ====================== LEFT PANEL ====================== -->
+        <aside class="panel panel-left" data-collapsed="false">
+            <div class="panel-head panel-head-left">
+                <div class="brand">
+                    <span data-i18n="app.brand.name">Fleex Optim</span>
+                    <small data-i18n="brand.subtitle">Planificateur de tournées</small>
+                </div>
+                <div class="head-spacer"></div>
+                <span id="status-bar" class="head-status loading" role="status" aria-live="polite">
+                    <span class="dot"></span>
+                    <span class="text" data-i18n="status.connecting">Connexion au serveur...</span>
+                </span>
+                <div class="flags">
+                    <button type="button" class="flag on" data-lang="fr" aria-pressed="true"
+                        data-i18n-attr="aria-label:lang.fr" title="Français">🇫🇷</button>
+                    <button type="button" class="flag" data-lang="en" aria-pressed="false"
+                        data-i18n-attr="aria-label:lang.en" title="English">🇬🇧</button>
+                    <button type="button" class="flag" data-lang="it" aria-pressed="false"
+                        data-i18n-attr="aria-label:lang.it" title="Italiano">🇮🇹</button>
+                </div>
+                <button class="theme-toggle" id="theme-toggle" type="button" title="Thème"
+                    aria-label="Toggle theme">🌙</button>
+                <button class="collapse-btn" data-collapse-target="left" data-i18n-attr="aria-label:panel.collapse"
+                    aria-label="Replier le panneau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg></button>
+            </div>
+
+            <div class="panel-body">
+
+                <!-- Sticky guide — 5 steps matching the current flow. -->
+                <div class="guide" id="guide">
+                    <button class="guide-close" id="guide-close" type="button"
+                        data-i18n-attr="aria-label:guide.close,title:guide.dontShowAgain" aria-label="Close guide"
+                        title="Ne plus afficher">×</button>
+                    <div class="guide-t" data-i18n="guide.title">Guide</div>
+                    <ol class="steps">
+                        <li class="cur" data-i18n="guide.step.1">Connexion Bemap</li>
+                        <li data-i18n="guide.step.2">Configurez les véhicules</li>
+                        <li data-i18n="guide.step.3">Placez le dépôt</li>
+                        <li data-i18n="guide.step.4">Ajoutez les clients</li>
+                        <li data-i18n="guide.step.5">Lancez l'optimisation</li>
+                    </ol>
+                </div>
+
+                <!-- Bemap config — collapsible (env + user + Modifier button) -->
+                <div class="advanced-section bemap-cfg">
+                    <button class="advanced-toggle" data-toggle="bemap">
+                        <span class="advanced-arrow" data-arrow="bemap">▶</span>
+                        <span data-i18n="config.bemap.title">Configuration Bemap</span>
+                        <span class="head-spacer"></span>
+                        <span class="mono bemap-cfg-summary"
+                            style="font-size:10.5px;text-transform:none;letter-spacing:0;color:var(--muted);font-weight:600">
+                            <b id="cfg-env" style="color:var(--ink-dim)">—</b>
+                            <span style="margin:0 3px">·</span>
+                            <b id="cfg-user" style="color:var(--ink-dim)">—</b>
+                        </span>
+                    </button>
+                    <div class="advanced-content" data-content="bemap" style="display:none">
+                        <div class="card" style="padding:10px 13px">
+                            <div class="mono" style="font-size:11.5px;color:var(--ink-dim);margin-bottom:8px">
+                                <span data-i18n="config.bemap.env">Env</span> : <b id="cfg-env-full"
+                                    style="color:var(--ink)">—</b><br>
+                                <span data-i18n="config.bemap.user">Utilisateur</span> : <b id="cfg-user-full"
+                                    style="color:var(--ink)">—</b>
+                            </div>
+                            <button class="btn btn-sm" id="btn-modify-creds" style="width:100%"
+                                data-i18n="config.bemap.modify">Modifier</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Paramètres avancés — service times (always available, near the top) -->
+                <div class="advanced-section">
+                    <button class="advanced-toggle" data-toggle="settings">
+                        <span class="advanced-arrow" data-arrow="settings">▶</span>
+                        <span data-i18n="advanced.settings">Paramètres avancés</span>
+                    </button>
+                    <div class="advanced-content" data-content="settings" style="display:none">
+                        <div class="card">
+                            <div class="card-title" data-i18n="advanced.serviceTimes">Temps de service (minutes)</div>
+                            <div id="service-times-container">
+                                <!-- Populated by fleet.js from cfg('defaults.serviceTimes'). -->
+                            </div>
+                            <button id="btn-reset-st" class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px"
+                                data-i18n="advanced.resetDefaults">Réinitialiser</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Import données (always available, near the top) -->
+                <div class="advanced-section">
+                    <button class="advanced-toggle" data-toggle="import">
+                        <span class="advanced-arrow" data-arrow="import">▶</span>
+                        <span data-i18n="import.title">Import données</span>
+                    </button>
+                    <div class="advanced-content" data-content="import" style="display:none">
+                        <div class="card">
+                            <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none" />
+                            <div style="display:flex;gap:6px">
+                                <button id="btn-csv-import" class="btn btn-violet" style="flex:1"
+                                    data-i18n="import.csvImport">Importer un CSV</button>
+                                <button id="btn-csv-example" class="btn btn-ghost" style="flex:1"
+                                    data-i18n="import.csvExample">CSV exemple</button>
+                            </div>
+                            <div class="advanced-section" style="margin:8px 0 0">
+                                <button class="advanced-toggle" data-toggle="json">
+                                    <span class="advanced-arrow" data-arrow="json">▶</span>
+                                    <span data-i18n="import.jsonImport">Import JSON</span>
+                                </button>
+                                <div class="advanced-content" data-content="json" style="display:none">
+                                    <textarea id="json-input" rows="4"
+                                        data-i18n-attr="placeholder:import.jsonPlaceholder"></textarea>
+                                    <div style="display:flex;gap:6px;margin-top:6px">
+                                        <button id="btn-json-import" class="btn btn-violet btn-sm" style="flex:1"
+                                            data-i18n="import.import">Importer</button>
+                                        <button id="btn-json-example" class="btn btn-ghost btn-sm" style="flex:1"
+                                            data-i18n="import.jsonExample">JSON exemple</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuration — FIRST gated step. Hidden until login; user must click "Continuer →" to proceed to Dépôt. -->
+                <div class="card" id="config-section" style="display:none">
+                    <div class="card-title" data-i18n="config.title">Configuration</div>
+                    <div class="field">
+                        <label for="num-vehicles" data-i18n="config.vehicles">Véhicules</label>
+                        <input id="num-vehicles" class="inp" type="number" min="1" value="4" />
+                    </div>
+                    <div class="field" style="margin-top:8px">
+                        <label for="num-trailer" data-i18n="config.trailerVehicles">Avec remorque</label>
+                        <input id="num-trailer" class="inp" type="number" min="0" value="0" />
+                    </div>
+                    <button id="btn-config-continue" class="btn btn-indigo" style="width:100%;margin-top:12px"
+                        data-i18n="config.continue">Continuer →</button>
+                </div>
+
+                <!-- Dépôt — single placement -->
+                <div class="card" id="depot-section">
+                    <div class="card-title" data-i18n="depot.title">Dépôt</div>
+                    <button id="btn-pick-depot" class="btn btn-map" style="width:100%"
+                        data-i18n="depot.placeOnMap">Placer sur la carte</button>
+                    <div id="depot-status" class="hint" data-i18n="depot.clickToPlace">Cliquez sur la carte pour placer
+                        le dépôt...</div>
+                </div>
+
+                <!-- Nouveau client (gated — visible after depot is placed) -->
+                <div class="card" id="new-client-section" style="display:none">
+                    <div class="card-title" data-i18n="newClient.title">Nouveau client</div>
+
+                    <div class="field">
+                        <label for="client-op" data-i18n="newClient.operation">Opération</label>
+                        <select id="client-op" class="inp">
+                            <option value="ECHANGE" data-i18n="operations.ECHANGE">Échange</option>
+                            <option value="ALLER_RETOUR" data-i18n="operations.ALLER_RETOUR">Aller-retour</option>
+                            <option value="DEPOSE" data-i18n="operations.DEPOSE">Dépose</option>
+                            <option value="RETRAIT" data-i18n="operations.RETRAIT">Retrait</option>
+                        </select>
+                    </div>
+
+                    <div class="field" style="margin-top:8px">
+                        <label for="client-bin" data-i18n="newClient.binSize">Taille benne</label>
+                        <div style="display:flex;gap:4px;align-items:center">
+                            <select id="client-bin" class="inp" style="flex:1"></select>
+                            <button id="btn-edit-bennes" class="btn btn-ghost" style="padding:6px 8px;font-size:14px"
+                                title="" data-i18n-attr="title:newClient.manageSizes">✎</button>
+                        </div>
+                    </div>
+
+                    <div id="benne-manager" style="display:none;margin-top:8px">
+                        <div style="display:flex;gap:6px">
+                            <input id="new-benne-name" class="inp" style="flex:1"
+                                data-i18n-attr="placeholder:newClient.binPlaceholder" />
+                            <button id="btn-add-benne" class="btn btn-sm" data-i18n="newClient.add">Ajouter</button>
+                        </div>
+                        <ul id="benne-list" style="list-style:none;padding:0;margin:8px 0"></ul>
+                        <button id="btn-reset-bennes" class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px"
+                            data-i18n="newClient.resetSizes">Réinitialiser</button>
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:10px">
+                        <button id="btn-pick-client" class="btn btn-map" style="flex:1"
+                            data-i18n="newClient.clientPosition">Position client</button>
+                        <button id="btn-pick-dump" class="btn btn-map dump" style="flex:1"
+                            data-i18n="newClient.dumpPoint">Point de vidage</button>
+                    </div>
+
+                    <label class="chk" style="margin-top:8px">
+                        <input type="checkbox" id="dump-is-hub" />
+                        <span data-i18n="newClient.dumpIsHub">Le vidage est un hub</span>
+                    </label>
+
+                    <button id="btn-add-client" class="btn btn-success" style="width:100%;margin-top:12px"
+                        data-i18n="newClient.addClient">Ajouter ce client</button>
+                </div>
+
+                <!-- Clients list (gated — visible alongside Nouveau client) -->
+                <div class="card" id="clients-section" style="display:none">
+                    <div class="card-title">
+                        <span data-i18n="clients.titleLabel">Clients</span>
+                        <span class="count">(<span id="client-count">0</span>)</span>
+                        <span class="spacer"></span>
+                    </div>
+                    <div id="clients-list">
+                        <div class="hint" id="clients-empty" data-i18n="clients.empty">Aucun client ajouté</div>
+                    </div>
+                </div>
+
+                <!-- Documentation — collapsed advanced-toggle revealing 2x2 grid -->
+                <div class="advanced-section">
+                    <button class="advanced-toggle" data-toggle="docs">
+                        <span class="advanced-arrow" data-arrow="docs">▶</span>
+                        <span data-i18n="docs.title">Documentation</span>
+                    </button>
+                    <div class="advanced-content" data-content="docs" style="display:none">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                            <a href="docs/USER_GUIDE_FR.md" download class="btn btn-sm btn-ghost"
+                                data-i18n="docs.guideFr">Guide utilisateur (FR)</a>
+                            <a href="docs/USER_GUIDE_EN.md" download class="btn btn-sm btn-ghost"
+                                data-i18n="docs.guideEn">User Guide (EN)</a>
+                            <a href="docs/API_DOC_FR.md" download class="btn btn-sm btn-ghost"
+                                data-i18n="docs.apiFr">Doc API (FR)</a>
+                            <a href="docs/API_DOC_EN.md" download class="btn btn-sm btn-ghost"
+                                data-i18n="docs.apiEn">API Doc (EN)</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Solve — the hero button, wrapped so it can be the highlight target.
+                     Gated: only visible once at least one client is added. -->
+                <div id="solve-section" class="card"
+                    style="background:transparent;border:none;padding:0;box-shadow:none;display:none">
+                    <button id="btn-solve" class="btn-solve" disabled>
+                        <span id="btn-solve-text" data-i18n="solve.start">Lancer l'optimisation</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ====================== RIGHT PANEL (collapsed by default, opens on solve) ====================== -->
+        <aside class="panel panel-right" data-collapsed="true">
+            <div class="panel-head">
+                <button class="collapse-btn" data-collapse-target="right" data-i18n-attr="aria-label:panel.expand"
+                    aria-label="Déplier le panneau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg></button>
+                <div class="results-title-group">
+                    <span class="results-title" data-i18n="results.title">Résultats</span>
+                    <small data-i18n="app.results.subtitle">Tournées optimisées</small>
+                </div>
+                <div class="head-spacer"></div>
+                <div class="head-actions">
+                    <button class="btn btn-sm" id="btn-show-all" data-i18n="results.showAll">Tout afficher</button>
+                    <button class="btn btn-sm" id="btn-hide-all" data-i18n="results.hideAll">Tout masquer</button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="empty" id="results-empty"
+                    style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);text-align:center;padding:24px">
+                    <div style="font-size:34px">🗺️</div>
+                    <div data-i18n="results.empty">Lancez une optimisation pour voir les résultats</div>
+                </div>
+                <div id="results-content" style="display:none">
+                    <!-- Filled by results.js in Phase F -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- Legend (bottom-left, ≥1320px) -->
+        <div class="legend">
+            <div class="row"><span
+                    style="width:9px;height:9px;border-radius:50%;background:var(--depot);display:inline-block"></span>
+                <span data-i18n="depot.title">Dépôt</span>
+            </div>
+            <div class="row"><span
+                    style="width:9px;height:9px;border-radius:50%;background:#1a73e8;display:inline-block"></span> <span
+                    data-i18n="clients.titleLabel">Clients</span></div>
+            <div class="row"><span
+                    style="width:9px;height:9px;border-radius:50%;background:var(--dump);display:inline-block"></span>
+                <span data-i18n="clients.dump">Vidage</span>
+            </div>
+        </div>
+
+        <!-- Loader (hidden) -- 3-phase overlay, driven by OR.events from src/app/loader.js -->
+        <div class="loader" id="loader" role="status" aria-live="polite" aria-hidden="true">
+            <div class="loader-card">
+                <div class="ring"></div>
+                <div class="msg" data-i18n="loader.phase.1.msg">Préparation de la matrice…</div>
+                <div class="ph" data-i18n="loader.phase.1.ph">Étape 1 / 3</div>
+                <div class="bar"><i style="width:33%"></i></div>
+            </div>
+        </div>
+
+        <!-- Login modal (hidden by default — auth.js shows it on boot in Phase C) -->
+        <div class="modal off" id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title"
+            aria-hidden="true">
+            <div class="modal-card">
+                <div class="modal-top">
+                    <b id="login-modal-title" data-i18n="auth.title">Connexion Bemap</b>
+                    <div data-i18n="auth.subtitle">Identifiants utilisés pour la carte et transmis au solveur.</div>
+                </div>
+                <div class="modal-body">
+                    <div class="field">
+                        <label for="login-env" data-i18n="auth.field.env">Environnement</label>
+                        <select class="inp" id="login-env">
+                            <option value="beta">Beta</option>
+                            <option value="preprod">Préproduction</option>
+                            <option value="prod">Production</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="login-user" data-i18n="auth.field.user">Utilisateur</label>
+                        <input class="inp" id="login-user" type="text"
+                            data-i18n-attr="placeholder:auth.field.user.placeholder" />
+                    </div>
+                    <div class="field">
+                        <label for="login-pwd" data-i18n="auth.field.password">Mot de passe</label>
+                        <input class="inp" id="login-pwd" type="password" />
+                    </div>
+                    <label class="chk">
+                        <input type="checkbox" id="login-remember" />
+                        <span data-i18n="auth.field.remember">Se souvenir de moi sur ce poste</span>
+                    </label>
+                    <button class="btn-solve" id="btn-login-submit" data-i18n="auth.submit">Se connecter</button>
+                    <div class="hint" data-i18n="auth.hint">Stockage obfusqué…</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+
+</html>
