@@ -1,0 +1,15 @@
+Proprietary License
+
+Copyright (c) BeNomad SAS. All rights reserved.
+
+This software is the proprietary information of BeNomad SAS. Use of this
+software is governed by the agreement between you and BeNomad SAS. No part of
+this software, including this distribution, may be copied, redistributed,
+modified, or used outside the scope of that agreement without prior written
+permission from BeNomad SAS.
+
+The bundled BeNomad JS API and third-party dependencies are subject to their
+own licenses. See the BeNomad JS API license at:
+https://github.com/BeNomadSAS/bemap-js-api
+
+For licensing inquiries, contact your BeNomad account manager.
